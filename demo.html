@@ -54,10 +54,9 @@
         <textarea id="output" readonly placeholder="Waiting for drawn shape..."></textarea>
     </div>
 
+    <!-- add: const API_KEY = "" to apikey.js -->
+    <script src="./apikey.js"></script>
     <script>
-        // REPLACE THIS WITH YOUR ACTUAL GOOGLE MAPS API KEY
-        const API_KEY = "AIzaSyAi3N13hpYxYO7zoynWDSHbW1dLoMOxFxQ";  // "YOUR_API_KEY_HERE"; 
-
         const script = document.createElement('script');
         script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=loadPolyfill`;
         script.async = true;

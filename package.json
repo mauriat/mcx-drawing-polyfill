@@ -1,0 +1,7 @@
+{
+  "name": "mcx-drawing-polyfill",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "node serve.js"
+  }
+}
