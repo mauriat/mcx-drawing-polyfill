@@ -108,6 +108,7 @@
             this._finishingMarker = null; // The interactive node to close/finish shapes
 
             this._ignoreMapClick = false; // Safety guard to prevent double-firing
+            this._lastMapClickTime = null;
 
             // Map event listener handles (for cleanup)
             this._listeners = [];
