@@ -393,24 +393,23 @@
 
             if (coords.length === 0) 
             {
-                if (this._finishingMarker) this._finishingMarker.setVisible(false);
+                if (this._finishingMarker) this._finishMarker.map = null;
                 return;
             }
 
             if (!this._finishingMarker) 
             {
-                this._finishingMarker = new google.maps.Marker({
+                const parser = new DOMParser();
+                const svgString = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24">
+                    <circle cx="50%" cy="50%" r="10" fill="rgba(255, 255, 255, 0.9)" stroke="#4285F4" stroke-width="4"/>
+                    </svg>`;
+                const markerSvg = parser.parseFromString(svgString, "image/svg+xml").documentElement;
+                markerSvg.style.transform = "translateY(66.6%)";
+                this._finishingMarker = new google.maps.marker.AdvancedMarkerElement({
                     map: this._map,
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        fillColor: '#ffffff',
-                        fillOpacity: 1,
-                        strokeColor: '#1a73e8',
-                        strokeWeight: 2,
-                        scale: 5
-                    },
-                    cursor: 'pointer', // Creates the "Hand" icon on hover automatically
-                    zIndex: 300
+                    content: markerSvg,
+                    zIndex: 300,
                 });
 
                 google.maps.event.addListener(this._finishingMarker, 'click', function (e)
@@ -427,8 +426,7 @@
             if (mode === OverlayType.POLYLINE) 
             {
                 // For Polylines, the finishing node lives on the LAST clicked point
-                this._finishingMarker.setPosition(coords[coords.length - 1]);
-                this._finishingMarker.setVisible(true);
+                this._finishingMarker.position = coords[coords.length - 1];
             }
             else if (mode === OverlayType.POLYGON) 
             {
@@ -436,11 +434,10 @@
                 // We only show it once a line segment actually exists.
                 if (coords.length >= 2)
                 {
-                    this._finishingMarker.setPosition(coords[0]);
-                    this._finishingMarker.setVisible(true);
+                    this._finishingMarker.position = coords[0];
                 } else
                 {
-                    this._finishingMarker.setVisible(false);
+                    this._finishingMarker.map = null;
                 }
             }
         };
@@ -469,7 +466,7 @@
             this._destroyActiveShape();
             if (this._finishingMarker)
             {
-                this._finishingMarker.setVisible(false);
+                this._finishMarker.map = null;
             }
             this._coords = [];
         };
@@ -489,7 +486,7 @@
             markerOptions.position = latLng;
             markerOptions.map = this._map;
 
-            var mockMarker = new google.maps.Marker(markerOptions);
+            var mockMarker = new google.maps.marker.AdvancedMarkerElement(markerOptions);
 
             var self = this;
             google.maps.event.trigger(self, 'overlaycomplete', {
