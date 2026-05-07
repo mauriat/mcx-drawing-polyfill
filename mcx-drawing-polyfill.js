@@ -27,7 +27,7 @@
 
     // ── CSS Injection ──────────────────────────────────────
 
-    var TOOLBAR_CSS = [
+    const TOOLBAR_CSS = [
         '.mcx-draw-toolbar {',
         '  display: flex;',
         '  align-items: center;',
@@ -60,11 +60,11 @@
         '.mcx-draw-btn svg { pointer-events: none; }',
     ].join('\n');
 
-    var _stylesInjected = false;
+    let _stylesInjected = false;
     function _injectStyles()
     {
         if (_stylesInjected) return;
-        var style = document.createElement('style');
+        const style = document.createElement('style');
         style.id = 'mcx-drawing-polyfill-css';
         style.textContent = TOOLBAR_CSS;
         document.head.appendChild(style);
@@ -73,7 +73,7 @@
 
     // ── SVG Icons ──────────────────────────────────────────
 
-    var ICONS = {
+    const ICONS = {
         hand: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M6 14a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4v-2.5a.5.5 0 0 0-.5-.5H6.5a.5.5 0 0 0-.5.5V14z"/></svg>',
         marker: '<svg width="18" height="18" viewBox="0 0 24 24" fill="#555" stroke="#555" stroke-width="0"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
         polyline: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,17 9,7 15,13 21,5"/></svg>',
@@ -82,7 +82,7 @@
 
     // ── OverlayType enum ───────────────────────────────────
 
-    var OverlayType = {
+    const OverlayType = {
         MARKER: 'marker',
         POLYGON: 'polygon',
         POLYLINE: 'polyline'
@@ -90,7 +90,7 @@
 
     // ── DrawingManager Class ───────────────────────────────
 
-    var DrawingManager = (function ()
+    const DrawingManager = (function ()
     {
 
         function DrawingManager(options)
@@ -175,11 +175,11 @@
 
         DrawingManager.prototype._attachToMap = function ()
         {
-            var map = this._map;
-            var self = this;
+            const map = this._map;
+            const self = this;
 
-            var clickHandle = google.maps.event.addListener(map, 'click', self._onMapClick);
-            var moveHandle = google.maps.event.addListener(map, 'mousemove', self._onMouseMove);
+            const clickHandle = google.maps.event.addListener(map, 'click', self._onMapClick);
+            const moveHandle = google.maps.event.addListener(map, 'mousemove', self._onMouseMove);
 
             this._listeners = [clickHandle, moveHandle];
             this._updateCursor();
@@ -218,7 +218,7 @@
             if (!e.latLng) return;
             if (this._ignoreMapClick) return;
 
-            var mode = this._currentMode;
+            const mode = this._currentMode;
 
             if (mode === OverlayType.MARKER)
             {
@@ -228,7 +228,7 @@
 
             if (mode === OverlayType.POLYLINE || mode === OverlayType.POLYGON)
             {
-                var now = Date.now();
+                const now = Date.now();
 
                 // FIX: Time Debounce - ignore double-clicks caused by physical mouse bounce
                 if (this._lastMapClickTime && (now - this._lastMapClickTime) < 150)
@@ -238,12 +238,12 @@
 
                 // FIX: Spatial Jitter - ignore clicks that are microscopic distances from the 
                 // last node (less than ~1 meter) to prevent invisible micro-segments from forming.
-                var lastCoord = this._coords[this._coords.length - 1];
+                const lastCoord = this._coords[this._coords.length - 1];
                 if (lastCoord)
                 {
-                    var dLat = lastCoord.lat() - e.latLng.lat();
-                    var dLng = lastCoord.lng() - e.latLng.lng();
-                    var distSq = (dLat * dLat) + (dLng * dLng);
+                    const dLat = lastCoord.lat() - e.latLng.lat();
+                    const dLng = lastCoord.lng() - e.latLng.lng();
+                    const distSq = (dLat * dLat) + (dLng * dLng);
                     if (distSq < 0.0000000001) return;
                 }
 
@@ -268,7 +268,7 @@
             if (!this._currentMode) return;
             if (!e.latLng) return;
 
-            var mode = this._currentMode;
+            const mode = this._currentMode;
             if ((mode === OverlayType.POLYLINE || mode === OverlayType.POLYGON) && this._coords.length > 0)
             {
                 this._updateGhostLine(e.latLng);
@@ -277,8 +277,8 @@
 
         DrawingManager.prototype._handleFinishingNodeClick = function ()
         {
-            var self = this;
-            var mode = this._currentMode;
+            const self = this;
+            const mode = this._currentMode;
             if (!mode) return;
 
             // FIX: If the Map click event fired just milliseconds before this Marker click event,
@@ -291,15 +291,15 @@
             this._ignoreMapClick = true;
             setTimeout(function () { self._ignoreMapClick = false; }, 150);
 
-            var minPoints = (mode === OverlayType.POLYGON) ? 3 : 2;
+            const minPoints = (mode === OverlayType.POLYGON) ? 3 : 2;
             if (this._coords.length >= minPoints)
             {
                 // FIX: Native google.maps.Polygon closes itself. If the last node matches the 
                 // start node, it creates a sharp visual spike. We remove it here.
                 if (mode === OverlayType.POLYGON)
                 {
-                    var first = this._coords[0];
-                    var last = this._coords[this._coords.length - 1];
+                    const first = this._coords[0];
+                    const last = this._coords[this._coords.length - 1];
                     if (first.equals(last))
                     {
                         this._coords.pop();
@@ -317,8 +317,8 @@
 
         DrawingManager.prototype._initActiveShape = function ()
         {
-            var map = this._map;
-            var coords = this._coords;
+            const map = this._map;
+            const coords = this._coords;
 
             this._activeShape = new google.maps.Polyline({
                 path: coords,
@@ -344,7 +344,7 @@
 
         DrawingManager.prototype._updateGhostLine = function (cursorLatLng)
         {
-            var lastCoord = this._coords[this._coords.length - 1];
+            const lastCoord = this._coords[this._coords.length - 1];
             if (!lastCoord) return;
 
             // FIX: If the mouse hasn't moved from the exact spot you clicked,
@@ -356,7 +356,7 @@
                 return;
             }
 
-            var ghostPath = [lastCoord, cursorLatLng];
+            const ghostPath = [lastCoord, cursorLatLng];
 
             if (!this._ghostLine)
             {
@@ -388,9 +388,9 @@
 
         DrawingManager.prototype._updateFinishingNode = function () 
         {
-            var coords = this._coords;
-            var mode = this._currentMode;
-            var self = this;
+            const coords = this._coords;
+            const mode = this._currentMode;
+            const self = this;
 
             if (coords.length === 0) 
             {
@@ -476,10 +476,10 @@
 
         DrawingManager.prototype._finishMarker = function (latLng)
         {
-            var markerOptions = {};
+            const markerOptions = {};
             if (this._options.markerOptions)
             {
-                for (var k in this._options.markerOptions)
+                for (const k in this._options.markerOptions)
                 {
                     markerOptions[k] = this._options.markerOptions[k];
                 }
@@ -487,9 +487,9 @@
             markerOptions.position = latLng;
             markerOptions.map = this._map;
 
-            var mockMarker = new google.maps.marker.AdvancedMarkerElement(markerOptions);
+            const mockMarker = new google.maps.marker.AdvancedMarkerElement(markerOptions);
 
-            var self = this;
+            const self = this;
             google.maps.event.trigger(self, 'overlaycomplete', {
                 type: OverlayType.MARKER,
                 overlay: mockMarker
@@ -502,13 +502,13 @@
 
         DrawingManager.prototype._finishShape = function (mode)
         {
-            var coords = this._coords.slice(); // snapshot
+            const coords = this._coords.slice(); // snapshot
 
             // Clear all temporary drawing assets before dispatching the final shape
             this._cancelCurrentDraw();
 
-            var self = this;
-            var mockOverlay;
+            const self = this;
+            let mockOverlay;
 
             if (mode === OverlayType.POLYLINE)
             {
@@ -554,7 +554,7 @@
         DrawingManager.prototype._updateCursor = function ()
         {
             if (!this._map) return;
-            var container = this._map.getDiv ? this._map.getDiv() : null;
+            const container = this._map.getDiv ? this._map.getDiv() : null;
 
             if (this._currentMode)
             {
@@ -577,9 +577,9 @@
 
         DrawingManager.prototype._updateToolbarState = function ()
         {
-            for (var mode in this._btnElements)
+            for (const mode in this._btnElements)
             {
-                var btn = this._btnElements[mode];
+                const btn = this._btnElements[mode];
                 if (btn)
                 {
                     btn.classList.toggle('mcx-draw-active', mode === (this._currentMode || 'hand'));
@@ -594,24 +594,24 @@
             if (this._toolbar) return;
             _injectStyles();
 
-            var opts = this._options;
-            var drawCtrlOpts = opts.drawingControlOptions || {};
-            var drawModes = drawCtrlOpts.drawingModes || [
+            const opts = this._options;
+            const drawCtrlOpts = opts.drawingControlOptions || {};
+            const drawModes = drawCtrlOpts.drawingModes || [
                 OverlayType.MARKER,
                 OverlayType.POLYLINE,
                 OverlayType.POLYGON
             ];
-            var position = drawCtrlOpts.position != null
+            const position = drawCtrlOpts.position != null
                 ? drawCtrlOpts.position
                 : google.maps.ControlPosition.TOP_CENTER;
 
-            var toolbar = document.createElement('div');
+            const toolbar = document.createElement('div');
             toolbar.className = 'mcx-draw-toolbar';
 
-            var self = this;
+            const self = this;
 
             // Hand / Pan button (always present)
-            var handBtn = _makeToolbarButton('hand', ICONS.hand, 'Pan', true, function ()
+            const handBtn = _makeToolbarButton('hand', ICONS.hand, 'Pan', true, function ()
             {
                 self.setDrawingMode(null);
             });
@@ -619,7 +619,7 @@
             this._btnElements['hand'] = handBtn;
 
             // Mode buttons
-            var modeLabels = {
+            const modeLabels = {
                 marker: 'Add Marker',
                 polyline: 'Draw Line',
                 polygon: 'Draw Polygon'
@@ -627,9 +627,9 @@
 
             drawModes.forEach(function (mode)
             {
-                var icon = ICONS[mode] || ICONS.marker;
-                var label = modeLabels[mode] || mode;
-                var btn = _makeToolbarButton(mode, icon, label, false, function ()
+                const icon = ICONS[mode] || ICONS.marker;
+                const label = modeLabels[mode] || mode;
+                const btn = _makeToolbarButton(mode, icon, label, false, function ()
                 {
                     self.setDrawingMode(mode);
                 });
@@ -648,7 +648,7 @@
 
         function _makeToolbarButton(mode, svgHtml, title, isActive, onClick)
         {
-            var btn = document.createElement('button');
+            const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'mcx-draw-btn' + (isActive ? ' mcx-draw-active' : '');
             btn.title = title;
