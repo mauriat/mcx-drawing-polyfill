@@ -107,9 +107,6 @@
             this._ghostLine = null;    // dashed preview line to cursor
             this._finishingMarker = null; // The interactive node to close/finish shapes
 
-            this._ignoreMapClick = false; // Safety guard to prevent double-firing
-            this._lastMapClickTime = null;
-
             // Map event listener handles (for cleanup)
             this._listeners = [];
 
@@ -120,6 +117,7 @@
             // Bind stable handler references
             this._onMapClick = this._handleMapClick.bind(this);
             this._onMouseMove = this._handleMouseMove.bind(this);
+            this._onMouseDblClick = this._handleFinishingNodeClick.bind(this);
             this._onFinishingNodeClick = this._handleFinishingNodeClick.bind(this);
 
             // Attach to map if provided
@@ -178,8 +176,9 @@
             const self = this;
             const clickHandle = google.maps.event.addListener(this._map, 'click', self._onMapClick);
             const moveHandle = google.maps.event.addListener(this._map, 'mousemove', self._onMouseMove);
+            const dblClickHandle = google.maps.event.addListener(this._map, 'dblclick', self._onMouseDblClick);
 
-            this._listeners = [clickHandle, moveHandle];
+            this._listeners = [clickHandle, moveHandle, dblClickHandle];
             this._updateCursor();
         };
 
@@ -214,7 +213,6 @@
         {
             if (!this._currentMode) return;
             if (!e.latLng) return;
-            if (this._ignoreMapClick) return;
 
             if (this._currentMode === OverlayType.MARKER)
             {
@@ -224,26 +222,6 @@
 
             if (this._currentMode === OverlayType.POLYLINE || this._currentMode === OverlayType.POLYGON)
             {
-                const now = Date.now();
-
-                // FIX: Time Debounce - ignore double-clicks caused by physical mouse bounce
-                if (this._lastMapClickTime && (now - this._lastMapClickTime) < 150)
-                {
-                    return;
-                }
-
-                // FIX: Spatial Jitter - ignore clicks that are microscopic distances from the 
-                // last node (less than ~1 meter) to prevent invisible micro-segments from forming.
-                const lastCoord = this._coords[this._coords.length - 1];
-                if (lastCoord)
-                {
-                    const dLat = lastCoord.lat() - e.latLng.lat();
-                    const dLng = lastCoord.lng() - e.latLng.lng();
-                    const distSq = (dLat * dLat) + (dLng * dLng);
-                    if (distSq < 0.0000000001) return;
-                }
-
-                this._lastMapClickTime = now;
                 this._coords.push(e.latLng);
 
                 if (this._coords.length === 1)
@@ -273,37 +251,15 @@
         DrawingManager.prototype._handleFinishingNodeClick = function ()
         {
             const self = this;
-            if (!this._currentMode) return;
-
-            // FIX: If the Map click event fired just milliseconds before this Marker click event,
-            // it means we caught an event bubble. Remove the bogus point to prevent stroke overshoot.
-            if (this._lastMapClickTime && (Date.now() - this._lastMapClickTime) < 200)
-            {
-                this._coords.pop();
+            if (this._currentMode) {
+                this._tempDisableGestures();
             }
-
-            this._ignoreMapClick = true;
-            setTimeout(function () { self._ignoreMapClick = false; }, 150);
+            if (!this._currentMode) return;
 
             const minPoints = (this._currentMode === OverlayType.POLYGON) ? 3 : 2;
             if (this._coords.length >= minPoints)
             {
-                // FIX: Native google.maps.Polygon closes itself. If the last node matches the 
-                // start node, it creates a sharp visual spike. We remove it here.
-                if (this._currentMode === OverlayType.POLYGON)
-                {
-                    const first = this._coords[0];
-                    const last = this._coords[this._coords.length - 1];
-                    if (first.equals(last))
-                    {
-                        this._coords.pop();
-                    }
-                }
-
                 this._finishShape(this._currentMode);
-            } else
-            {
-                this._cancelCurrentDraw();
             }
         };
 
@@ -382,7 +338,10 @@
             const coords = this._coords;
             const self = this;
 
-            if (coords.length === 0) 
+            if (
+                coords.length === 0 ||
+                ((this._currentMode === OverlayType.POLYLINE || this._currentMode === OverlayType.POLYGON) && coords.length < 2)
+            )
             {
                 if (this._finishingMarker) this._finishMarker.map = null;
                 return;
@@ -422,14 +381,7 @@
             else if (this._currentMode === OverlayType.POLYGON)
             {
                 // For Polygons, the finishing node lives on the FIRST point to close the shape.
-                // We only show it once a line segment actually exists.
-                if (coords.length >= 2)
-                {
-                    this._finishingMarker.position = coords[0];
-                } else
-                {
-                    this._finishingMarker.map = null;
-                }
+                this._finishingMarker.position = coords[0];
             }
         };
 
@@ -460,12 +412,16 @@
                 this._finishMarker.map = null;
             }
             this._coords = [];
+            // The 'Pan' hand active is equivalent to 'null'
+            this._currentMode = null;
         };
 
         // ── Finish handlers ────────────────────────────────
 
         DrawingManager.prototype._finishMarker = function (latLng)
         {
+            this._tempDisableGestures();
+
             const markerOptions = {};
             if (this._options.markerOptions)
             {
@@ -537,6 +493,14 @@
 
             // Exit draw mode automatically so Place Edit panel can take priority cleanly
             this.setDrawingMode(null);
+        };
+
+        DrawingManager.prototype._tempDisableGestures = function (timeout = 300)
+        {
+            // Temporarily disable all gesture handling to prevent map zoom-in event upon double-click
+            const self = this;
+            this._map.setOptions({ gestureHandling: 'none' });
+            setTimeout(() => self._map.setOptions({ gestureHandling: 'auto' }), timeout);
         };
 
         // ── Cursor & state helpers ─────────────────────────
