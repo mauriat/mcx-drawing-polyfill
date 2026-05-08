@@ -175,11 +175,9 @@
 
         DrawingManager.prototype._attachToMap = function ()
         {
-            const map = this._map;
             const self = this;
-
-            const clickHandle = google.maps.event.addListener(map, 'click', self._onMapClick);
-            const moveHandle = google.maps.event.addListener(map, 'mousemove', self._onMouseMove);
+            const clickHandle = google.maps.event.addListener(this._map, 'click', self._onMapClick);
+            const moveHandle = google.maps.event.addListener(this._map, 'mousemove', self._onMouseMove);
 
             this._listeners = [clickHandle, moveHandle];
             this._updateCursor();
@@ -218,15 +216,13 @@
             if (!e.latLng) return;
             if (this._ignoreMapClick) return;
 
-            const mode = this._currentMode;
-
-            if (mode === OverlayType.MARKER)
+            if (this._currentMode === OverlayType.MARKER)
             {
                 this._finishMarker(e.latLng);
                 return;
             }
 
-            if (mode === OverlayType.POLYLINE || mode === OverlayType.POLYGON)
+            if (this._currentMode === OverlayType.POLYLINE || this._currentMode === OverlayType.POLYGON)
             {
                 const now = Date.now();
 
@@ -268,8 +264,7 @@
             if (!this._currentMode) return;
             if (!e.latLng) return;
 
-            const mode = this._currentMode;
-            if ((mode === OverlayType.POLYLINE || mode === OverlayType.POLYGON) && this._coords.length > 0)
+            if ((this._currentMode === OverlayType.POLYLINE || this._currentMode === OverlayType.POLYGON) && this._coords.length > 0)
             {
                 this._updateGhostLine(e.latLng);
             }
@@ -278,8 +273,7 @@
         DrawingManager.prototype._handleFinishingNodeClick = function ()
         {
             const self = this;
-            const mode = this._currentMode;
-            if (!mode) return;
+            if (!this._currentMode) return;
 
             // FIX: If the Map click event fired just milliseconds before this Marker click event,
             // it means we caught an event bubble. Remove the bogus point to prevent stroke overshoot.
@@ -291,12 +285,12 @@
             this._ignoreMapClick = true;
             setTimeout(function () { self._ignoreMapClick = false; }, 150);
 
-            const minPoints = (mode === OverlayType.POLYGON) ? 3 : 2;
+            const minPoints = (this._currentMode === OverlayType.POLYGON) ? 3 : 2;
             if (this._coords.length >= minPoints)
             {
                 // FIX: Native google.maps.Polygon closes itself. If the last node matches the 
                 // start node, it creates a sharp visual spike. We remove it here.
-                if (mode === OverlayType.POLYGON)
+                if (this._currentMode === OverlayType.POLYGON)
                 {
                     const first = this._coords[0];
                     const last = this._coords[this._coords.length - 1];
@@ -306,7 +300,7 @@
                     }
                 }
 
-                this._finishShape(mode);
+                this._finishShape(this._currentMode);
             } else
             {
                 this._cancelCurrentDraw();
@@ -317,12 +311,9 @@
 
         DrawingManager.prototype._initActiveShape = function ()
         {
-            const map = this._map;
-            const coords = this._coords;
-
             this._activeShape = new google.maps.Polyline({
-                path: coords,
-                map: map,
+                path: this._coords,
+                map: this._map,
                 strokeColor: '#1a73e8',
                 strokeWeight: 3,
                 strokeOpacity: 0.9,
@@ -389,7 +380,6 @@
         DrawingManager.prototype._updateFinishingNode = function () 
         {
             const coords = this._coords;
-            const mode = this._currentMode;
             const self = this;
 
             if (coords.length === 0) 
@@ -424,12 +414,12 @@
                 });
             }
 
-            if (mode === OverlayType.POLYLINE) 
+            if (this._currentMode === OverlayType.POLYLINE)
             {
                 // For Polylines, the finishing node lives on the LAST clicked point
                 this._finishingMarker.position = coords[coords.length - 1];
             }
-            else if (mode === OverlayType.POLYGON) 
+            else if (this._currentMode === OverlayType.POLYGON)
             {
                 // For Polygons, the finishing node lives on the FIRST point to close the shape.
                 // We only show it once a line segment actually exists.
@@ -594,8 +584,7 @@
             if (this._toolbar) return;
             _injectStyles();
 
-            const opts = this._options;
-            const drawCtrlOpts = opts.drawingControlOptions || {};
+            const drawCtrlOpts = this._options.drawingControlOptions || {};
             const drawModes = drawCtrlOpts.drawingModes || [
                 OverlayType.MARKER,
                 OverlayType.POLYLINE,
@@ -627,12 +616,13 @@
 
             drawModes.forEach(function (mode)
             {
-                const icon = ICONS[mode] || ICONS.marker;
-                const label = modeLabels[mode] || mode;
-                const btn = _makeToolbarButton(mode, icon, label, false, function ()
-                {
-                    self.setDrawingMode(mode);
-                });
+                const btn = _makeToolbarButton(
+                    mode,
+                    ICONS[mode] || ICONS.marker,
+                    modeLabels[mode] || mode,
+                    false,
+                    () => self.setDrawingMode(mode),
+                );
                 toolbar.appendChild(btn);
                 self._btnElements[mode] = btn;
             });
