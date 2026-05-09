@@ -76,16 +76,20 @@
     const ICONS = {
         hand: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M6 14a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4v-2.5a.5.5 0 0 0-.5-.5H6.5a.5.5 0 0 0-.5.5V14z"/></svg>',
         marker: '<svg width="18" height="18" viewBox="0 0 24 24" fill="#555" stroke="#555" stroke-width="0"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
+        circle: '<svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(85,85,85,0.15)" stroke="#555" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>',
         polyline: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,17 9,7 15,13 21,5"/></svg>',
         polygon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(85,85,85,0.15)" stroke="#555" stroke-width="2" stroke-linejoin="round"><polygon points="12,3 21,9 18,20 6,20 3,9"/></svg>',
+        rectangle: '<svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(85,85,85,0.15)" stroke="#555" stroke-width="2" stroke-linejoin="round"><polygon points="3,3 21,3 21,21 3,21"/></svg>',
     };
 
     // ── OverlayType enum ───────────────────────────────────
 
     const OverlayType = {
+        CIRCLE: 'circle',
         MARKER: 'marker',
         POLYGON: 'polygon',
-        POLYLINE: 'polyline'
+        POLYLINE: 'polyline',
+        RECTANGLE: 'rectangle',
     };
 
     // ── DrawingManager Class ───────────────────────────────
@@ -218,9 +222,7 @@
             {
                 this._finishMarker(e.latLng);
                 return;
-            }
-
-            if (this._currentMode === OverlayType.POLYLINE || this._currentMode === OverlayType.POLYGON)
+            } else
             {
                 this._coords.push(e.latLng);
 
@@ -230,6 +232,13 @@
                 } else
                 {
                     this._updateActiveShape();
+
+                    // Circle and Rectangle only require 2 clicks, second click should finish
+                    if (this._currentMode === OverlayType.CIRCLE || this._currentMode === OverlayType.RECTANGLE)
+                    {
+                        this._handleFinishingNodeClick(e);
+                        return;
+                    }
                 }
 
                 this._updateFinishingNode();
@@ -242,7 +251,7 @@
             if (!this._currentMode) return;
             if (!e.latLng) return;
 
-            if ((this._currentMode === OverlayType.POLYLINE || this._currentMode === OverlayType.POLYGON) && this._coords.length > 0)
+            if (this._coords.length > 0 && this._currentMode !== OverlayType.MARKER)
             {
                 this._updateGhostLine(e.latLng);
             }
@@ -267,26 +276,62 @@
 
         DrawingManager.prototype._initActiveShape = function ()
         {
-            this._activeShape = new google.maps.Polyline({
-                path: this._coords,
-                map: this._map,
-                strokeColor: '#1a73e8',
-                strokeWeight: 3,
-                strokeOpacity: 0.9,
-                // FIX: Force Google Maps SVG renderer to use round joints instead of square caps.
-                // This completely eliminates sharp overlapping corners/horns on acute angles.
-                strokeLineJoin: 'round',
-                strokeLineCap: 'round',
-                clickable: false,
-                zIndex: 200
-            });
+            if (this._currentMode === OverlayType.CIRCLE)
+            {
+                this._activeShape = new google.maps.Circle({
+                    center: this._coords[0],
+                    map: this._map,
+                    strokeColor: '#1a73e8',
+                    strokeWeight: 2,
+                    strokeOpacity: 0.9,
+                    fillColor: '#1a73e8',
+                    fillOpacity: 0.25,
+                    clickable: false,
+                    zIndex: 200
+                });
+            } else if (this._currentMode === OverlayType.RECTANGLE)
+            {
+                // Default rectangle is just a point at coord 0
+                this._activeShape = new google.maps.Rectangle({
+                    bounds: new google.maps.LatLngBounds(this._coords[0], this._coords[0]),
+                    map: this._map,
+                    strokeColor: '#1a73e8',
+                    strokeWeight: 2,
+                    strokeOpacity: 0.9,
+                    fillColor: '#1a73e8',
+                    fillOpacity: 0.25,
+                    clickable: false,
+                    zIndex: 200
+                });
+            } else { // POLYLINE, POLYGON
+                this._activeShape = new google.maps.Polyline({
+                    path: this._coords,
+                    map: this._map,
+                    strokeColor: '#1a73e8',
+                    strokeWeight: 3,
+                    strokeOpacity: 0.9,
+                    // FIX: Force Google Maps SVG renderer to use round joints instead of square caps.
+                    // This completely eliminates sharp overlapping corners/horns on acute angles.
+                    strokeLineJoin: 'round',
+                    strokeLineCap: 'round',
+                    clickable: false,
+                    zIndex: 200
+                });
+            }
         };
 
         DrawingManager.prototype._updateActiveShape = function ()
         {
             if (!this._activeShape) return;
-            // Since it's always a polyline during drawing, we just set the continuous path
-            this._activeShape.setPath(this._coords);
+            if (this._currentMode === OverlayType.CIRCLE)
+            {
+                this._activeShape.setRadius(this._getRadiusMeters(this._coords[0], this._coords[1]));
+            } else if (this._currentMode === OverlayType.RECTANGLE)
+            {
+                this._activeShape.setBounds(this._getRectBounds(this._coords[0], this._coords[1]));
+            } else {
+                this._activeShape.setPath(this._coords);
+            }
         };
 
         DrawingManager.prototype._updateGhostLine = function (cursorLatLng)
@@ -297,7 +342,8 @@
             // FIX: If the mouse hasn't moved from the exact spot you clicked,
             // hide the ghost line. A zero-length line has no angle, which causes 
             // the Google Maps renderer to draw a crooked "spike" artifact!
-            if (lastCoord.equals(cursorLatLng))
+            if (lastCoord.equals(cursorLatLng) &&
+                (this._currentMode !== OverlayType.CIRCLE && this._currentMode !== OverlayType.RECTANGLE))
             {
                 if (this._ghostLine) this._ghostLine.setVisible(false);
                 return;
@@ -307,29 +353,67 @@
 
             if (!this._ghostLine)
             {
-                this._ghostLine = new google.maps.Polyline({
-                    path: ghostPath,
-                    map: this._map,
-                    strokeOpacity: 0, // The main solid stroke must be hidden for dots to work
-                    icons: [{
-                        icon: {
-                            // FIX: Changed from a dashed line to a dotted line as requested
-                            path: google.maps.SymbolPath.CIRCLE,
-                            fillColor: '#1a73e8',
-                            fillOpacity: 0.7,
-                            strokeOpacity: 0,
-                            scale: 2
-                        },
-                        offset: '0',
-                        repeat: '4px'
-                    }],
-                    clickable: false,
-                    zIndex: 201
-                });
+                if (this._currentMode === OverlayType.CIRCLE)
+                {
+                    this._ghostLine = new google.maps.Circle({
+                        center: this._coords[0], cursorLatLng,
+                        radius: this._getRadiusMeters(this._coords[0], cursorLatLng),
+                        map: this._map,
+                        strokeColor: '#1a73e8',
+                        strokeWeight: 2,
+                        strokeOpacity: 0.9,
+                        fillColor: '#1a73e8',
+                        fillOpacity: 0.25,
+                        clickable: false,
+                        zIndex: 201,
+                    });
+                } else if (this._currentMode === OverlayType.RECTANGLE)
+                {
+                    this._ghostLine = new google.maps.Rectangle({
+                        bounds: this._getRectBounds(this._coords[0], cursorLatLng),
+                        map: this._map,
+                        strokeColor: '#1a73e8',
+                        strokeWeight: 2,
+                        strokeOpacity: 0.9,
+                        fillColor: '#1a73e8',
+                        fillOpacity: 0.25,
+                        clickable: false,
+                        zIndex: 201,
+                    });
+                } else
+                {
+                    this._ghostLine = new google.maps.Polyline({
+                        path: ghostPath,
+                        map: this._map,
+                        strokeOpacity: 0, // The main solid stroke must be hidden for dots to work
+                        icons: [{
+                            icon: {
+                                // FIX: Changed from a dashed line to a dotted line as requested
+                                path: google.maps.SymbolPath.CIRCLE,
+                                fillColor: '#1a73e8',
+                                fillOpacity: 0.7,
+                                strokeOpacity: 0,
+                                scale: 2
+                            },
+                            offset: '0',
+                            repeat: '4px'
+                        }],
+                        clickable: false,
+                        zIndex: 201
+                    });
+                }
             } else
             {
-                this._ghostLine.setPath(ghostPath);
-                this._ghostLine.setVisible(true); // Bring it back once the mouse moves
+                if (this._currentMode === OverlayType.CIRCLE)
+                {
+                    this._ghostLine.setRadius(this._getRadiusMeters(this._coords[0], cursorLatLng));
+                } else if (this._currentMode === OverlayType.RECTANGLE)
+                {
+                    this._ghostLine.setBounds(this._getRectBounds(this._coords[0], cursorLatLng));
+                } else {
+                    this._ghostLine.setPath(ghostPath);
+                    this._ghostLine.setVisible(true); // Bring it back once the mouse moves
+                }
             }
         };
 
@@ -489,10 +573,58 @@
                     overlay: mockOverlay
                 });
                 google.maps.event.trigger(self, 'polygoncomplete', mockOverlay);
+            } else if (mode === OverlayType.CIRCLE)
+            {
+                mockOverlay = new google.maps.Circle({
+                    center: coords[0],
+                    radius: this._getRadiusMeters(coords[0], coords[1]),
+                    map: this._map,
+                    strokeColor: '#1a73e8',
+                    strokeWeight: 2,
+                    strokeOpacity: 0.9,
+                    fillColor: '#1a73e8',
+                    fillOpacity: 0.25,
+                    clickable: true
+                });
+                google.maps.event.trigger(self, 'overlaycomplete', {
+                    type: OverlayType.CIRCLE,
+                    overlay: mockOverlay
+                });
+                google.maps.event.trigger(self, 'circlecomplete', mockOverlay);
+            } else if (mode === OverlayType.RECTANGLE)
+            {
+                mockOverlay = new google.maps.Rectangle({
+                    bounds: this._getRectBounds(coords[0], coords[1]),
+                    map: this._map,
+                    strokeColor: '#1a73e8',
+                    strokeWeight: 2,
+                    strokeOpacity: 0.9,
+                    fillColor: '#1a73e8',
+                    fillOpacity: 0.25,
+                    clickable: true
+                });
+                google.maps.event.trigger(self, 'overlaycomplete', {
+                    type: OverlayType.RECTANGLE,
+                    overlay: mockOverlay
+                });
+                google.maps.event.trigger(self, 'rectanglecomplete', mockOverlay);
             }
 
             // Exit draw mode automatically so Place Edit panel can take priority cleanly
             this.setDrawingMode(null);
+        };
+
+        DrawingManager.prototype._getRectBounds = function (c0, c1)
+        {
+            // Bounds always requires NE to SW
+            const [ lat0, lat1 ] = [ c0.lat(), c1.lat() ];
+            const [ lng0, lng1 ] = [ c0.lng(), c1.lng() ];
+            return {
+                north: Math.max(lat0, lat1),
+                south: Math.min(lat0, lat1),
+                east:  Math.max(lng0, lng1),
+                west:  Math.min(lng0, lng1),
+            };
         };
 
         DrawingManager.prototype._tempDisableGestures = function (timeout = 300)
@@ -502,6 +634,19 @@
             this._map.setOptions({ gestureHandling: 'none' });
             setTimeout(() => self._map.setOptions({ gestureHandling: 'auto' }), timeout);
         };
+
+        DrawingManager.prototype._getRadiusMeters = function (a, b)
+        {
+            // Haversine formula
+            const R = 6371008.8; // Earth's mean radius in meters (WGS-84)
+            const toRad = (d) => d * Math.PI / 180;
+            const dLat = toRad(b.lat() - a.lat());
+            const dLng = toRad(b.lng() - a.lng());
+            const h = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(a.lat())) * Math.cos(toRad(b.lat())) *
+                Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+        }
 
         // ── Cursor & state helpers ─────────────────────────
 
@@ -551,8 +696,10 @@
             const drawCtrlOpts = this._options.drawingControlOptions || {};
             const drawModes = drawCtrlOpts.drawingModes || [
                 OverlayType.MARKER,
+                OverlayType.CIRCLE,
                 OverlayType.POLYLINE,
-                OverlayType.POLYGON
+                OverlayType.POLYGON,
+                OverlayType.RECTANGLE,
             ];
             const position = drawCtrlOpts.position != null
                 ? drawCtrlOpts.position
@@ -574,8 +721,10 @@
             // Mode buttons
             const modeLabels = {
                 marker: 'Add Marker',
+                circle: 'Draw Circle',
                 polyline: 'Draw Line',
-                polygon: 'Draw Polygon'
+                polygon: 'Draw Polygon',
+                rectangle: 'Draw Rectangle',
             };
 
             drawModes.forEach(function (mode)

@@ -85,7 +85,7 @@
                 drawingControl: true,
                 drawingControlOptions: {
                     position: google.maps.ControlPosition.TOP_CENTER,
-                    drawingModes: ['marker', 'polyline', 'polygon']
+                    drawingModes: ['marker', 'circle', 'polyline', 'polygon', 'rectangle'],
                 }
             });
 
@@ -98,6 +98,14 @@
                 if (event.type === 'marker') {
                     const pos = event.overlay.position;
                     coords.push({ lat: pos.lat, lng: pos.lng });
+                } else if (event.type == 'circle') {
+                    coords.push({
+                        center: event.overlay.getCenter(),
+                        radius: event.overlay.getRadius(),
+                        bounds: event.overlay.getBounds(),
+                    });
+                } else if (event.type == 'rectangle') {
+                    coords = event.overlay.getBounds();
                 } else {
                     const path = event.overlay.getPath().getArray();
                     coords = path.map(p => ({ lat: p.lat(), lng: p.lng() }));
