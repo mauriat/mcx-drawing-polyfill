@@ -193,8 +193,7 @@
                 google.maps.event.removeListener(l);
             });
             this._listeners = [];
-            this._destroyGhostLine();
-            this._destroyActiveShape();
+            this._destroyActiveShapes();
 
             if (this._finishingMarker)
             {
@@ -469,17 +468,13 @@
             }
         };
 
-        DrawingManager.prototype._destroyGhostLine = function ()
+        DrawingManager.prototype._destroyActiveShapes = function ()
         {
             if (this._ghostLine)
             {
                 this._ghostLine.setMap(null);
                 this._ghostLine = null;
             }
-        };
-
-        DrawingManager.prototype._destroyActiveShape = function ()
-        {
             if (this._activeShape)
             {
                 this._activeShape.setMap(null);
@@ -489,8 +484,7 @@
 
         DrawingManager.prototype._cancelCurrentDraw = function ()
         {
-            this._destroyGhostLine();
-            this._destroyActiveShape();
+            this._destroyActiveShapes();
             if (this._finishingMarker)
             {
                 this._finishMarker.map = null;
@@ -550,12 +544,6 @@
                     strokeOpacity: 0.9,
                     clickable: true
                 });
-                google.maps.event.trigger(self, 'overlaycomplete', {
-                    type: OverlayType.POLYLINE,
-                    overlay: mockOverlay
-                });
-                google.maps.event.trigger(self, 'polylinecomplete', mockOverlay);
-
             } else if (mode === OverlayType.POLYGON)
             {
                 mockOverlay = new google.maps.Polygon({
@@ -568,11 +556,6 @@
                     fillOpacity: 0.25,
                     clickable: true
                 });
-                google.maps.event.trigger(self, 'overlaycomplete', {
-                    type: OverlayType.POLYGON,
-                    overlay: mockOverlay
-                });
-                google.maps.event.trigger(self, 'polygoncomplete', mockOverlay);
             } else if (mode === OverlayType.CIRCLE)
             {
                 mockOverlay = new google.maps.Circle({
@@ -586,11 +569,6 @@
                     fillOpacity: 0.25,
                     clickable: true
                 });
-                google.maps.event.trigger(self, 'overlaycomplete', {
-                    type: OverlayType.CIRCLE,
-                    overlay: mockOverlay
-                });
-                google.maps.event.trigger(self, 'circlecomplete', mockOverlay);
             } else if (mode === OverlayType.RECTANGLE)
             {
                 mockOverlay = new google.maps.Rectangle({
@@ -603,12 +581,13 @@
                     fillOpacity: 0.25,
                     clickable: true
                 });
-                google.maps.event.trigger(self, 'overlaycomplete', {
-                    type: OverlayType.RECTANGLE,
-                    overlay: mockOverlay
-                });
-                google.maps.event.trigger(self, 'rectanglecomplete', mockOverlay);
             }
+
+            google.maps.event.trigger(self, 'overlaycomplete', {
+                type: mode,
+                overlay: mockOverlay
+            });
+            google.maps.event.trigger(self, `${mode}complete`, mockOverlay);
 
             // Exit draw mode automatically so Place Edit panel can take priority cleanly
             this.setDrawingMode(null);
