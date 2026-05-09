@@ -155,10 +155,7 @@
             }
         };
 
-        DrawingManager.prototype.getMap = function ()
-        {
-            return this._map;
-        };
+        DrawingManager.prototype.getMap = () => this._map;
 
         DrawingManager.prototype.setDrawingMode = function (mode)
         {
@@ -168,10 +165,7 @@
             this._updateToolbarState();
         };
 
-        DrawingManager.prototype.getDrawingMode = function ()
-        {
-            return this._currentMode;
-        };
+        DrawingManager.prototype.getDrawingMode = () => this._currentMode;
 
         // ── Map attachment / detachment ────────────────────
 
@@ -432,12 +426,11 @@
 
             if (!this._finishingMarker) 
             {
-                const parser = new DOMParser();
                 const svgString = `
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24">
                     <circle cx="50%" cy="50%" r="10" fill="rgba(255, 255, 255, 0.9)" stroke="#4285F4" stroke-width="4"/>
                     </svg>`;
-                const markerSvg = parser.parseFromString(svgString, "image/svg+xml").documentElement;
+                const markerSvg = (new DOMParser()).parseFromString(svgString, "image/svg+xml").documentElement;
                 markerSvg.style.transform = "translateY(66.6%)";
                 this._finishingMarker = new google.maps.marker.AdvancedMarkerElement({
                     map: this._map,
@@ -500,17 +493,11 @@
         {
             this._tempDisableGestures();
 
-            const markerOptions = {};
-            if (this._options.markerOptions)
-            {
-                for (const k in this._options.markerOptions)
-                {
-                    markerOptions[k] = this._options.markerOptions[k];
-                }
-            }
-            markerOptions.position = latLng;
-            markerOptions.map = this._map;
-
+            const markerOptions = {
+                ...(this._options.markerOptions || {}),
+                position: latLng,
+                map: this._map,
+            };
             const mockMarker = new google.maps.marker.AdvancedMarkerElement(markerOptions);
 
             const self = this;
