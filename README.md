@@ -2,6 +2,18 @@
 # Google Maps Drawing Manager Polyfill
 A standalone, zero-dependency drop-in replacement for the deprecated `google.maps.drawing` library in the Google Maps Javascript API.
 
+## 🔀 Fork / 💥Modifications
+The following changes were made from the original `mcx-drawing-polyfill` project:
+* Migrated to `AdvancedMarkerElement` from the deprecated `Marker`
+* Eliminated use of `var` declarations
+* Added support for `dblclick` event handling and eliminated work-arounds for detecting consecutive single-clicks
+* Added support for `google.maps.Circle` and `google.maps.Rectangle`
+* Minor project rework to support basic serving of `demo.html`
+    - Moved `API_KEY` to `apikey.js`
+    - Added `.gitignore` to ignore `apikey.js`
+    - Added `package.json` to serve `demo.html` using native Node (no dependencies)
+        - use: `npm run dev`
+
 ## ⚠️ Why is this needed?
 In August 2025, Google deprecated the `google.maps.drawing` library. It will be completely removed from the Maps JavaScript API in **May 2026**. 
 
@@ -54,5 +66,4 @@ function onMapsReady() {
    
     document.head.appendChild(polyfill);
 }
-
-
+```

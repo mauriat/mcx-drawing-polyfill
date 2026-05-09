@@ -2,11 +2,14 @@
  * Google Maps Drawing Manager Polyfill
  * * A zero-dependency, drop-in replacement for the deprecated google.maps.drawing library.
  * * Author: Robert McMahon
+ * * Update: Mauriat Miranda
  * Website: https://www.mapchannels.com/ 
  * GitHub: https://github.com/mapchannels/google-maps-drawing-polyfill
- * Demo: https://mapchannels.github.io/google-maps-drawing-polyfill/
+ * Demo: https://mapchannels.github.io/mcx-drawing-polyfill/demo.html
+ * Update: https://github.com/mauriat/mcx-drawing-polyfill
  * * Released under the MIT License.
  * Copyright (c) 2026 Map Channels
+ * Copyright (c) 2026 Mauriat Miranda
  * * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction... (see GitHub repo for full license).
